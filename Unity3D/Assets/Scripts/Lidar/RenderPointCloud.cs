@@ -124,7 +124,7 @@ public class RenderPointCloud : MonoBehaviour {
         }
 
         // Step 2: Rotate and translate the point cloud.
-        Quaternion pointCloudRotation = Quaternion.Euler(0, -movoRotationOffsetAngle, 0);
+        Quaternion pointCloudRotation = Quaternion.Euler(0, movoRotationOffsetAngle, 0);
         Quaternion calibrationRotation = Quaternion.Euler(-95, 0, 95);
         Vector3 calibrationTranslation = new Vector3(0.4f, 0.49f, 0.35f);
 
@@ -136,7 +136,7 @@ public class RenderPointCloud : MonoBehaviour {
             points[i] = points[i] + calibrationTranslation;
 
             // Translating and rotating according to the Movo's new position
-            points[i] = points[i] - movoTranslationOffset;
+            points[i] = points[i] + movoTranslationOffset;
             points[i] = pointCloudRotation * points[i];
 
             indices[i] = i;
@@ -157,6 +157,6 @@ public class RenderPointCloud : MonoBehaviour {
         movo.transform.Translate(movoTranslationOffset);
         movo.transform.Rotate(lastMovoRotation);
 
-        Debug.Log("Movo translation: " + lastMovoTranslation);
+        Debug.Log("Movo rotation: " + lastMovoRotation);
     }
 }
