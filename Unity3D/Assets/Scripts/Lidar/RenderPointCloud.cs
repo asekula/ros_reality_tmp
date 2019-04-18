@@ -16,16 +16,29 @@ public class MovoPosition {
     }
 }
 
+public enum CalibrationStage {
+    BEFORE_FIRST_POINT,
+    BEFORE_SECOND_POINT,
+    CALIBRATED
+}
+
 [RequireComponent(typeof(MeshFilter), typeof(MeshRenderer))]
 public class RenderPointCloud : MonoBehaviour {
 
     public ConcurrentQueue<MovoPosition> movoPositions;
     private Vector3 lastMovoTranslation, lastMovoRotation;
 
+    private Vector3 smoothedAveragePoint;
+    private int numAverages;
+    private CalibrationStage calibrationStage;
+
     private GameObject movo;
+    private GameObject averagePoint, calibrationBalloon;
+    private GameObject calibrationPoint1, calibrationPoint2;
 
     private Mesh mesh;
     int maxPoints = 60000;
+    float epsilon = 0.01f;
 
     Vector3[] points;
     int[] indices;
@@ -35,7 +48,7 @@ public class RenderPointCloud : MonoBehaviour {
     GradientColorKey[] gck;
     GradientAlphaKey[] gak;
 
-    Color[] colorBuckets; 
+    Color[] colorBuckets;
 
     // Use this for initialization
     void Start() {
@@ -44,24 +57,27 @@ public class RenderPointCloud : MonoBehaviour {
         lastMovoTranslation = new Vector3(0,0,0);
         movo = GameObject.Find("movo");
 
+        averagePoint = GameObject.Find("AveragePoint");
+        averagePoint.GetComponent<Renderer>().material.color = Color.black;
+        averagePoint.SetActive(false);
+        calibrationBalloon = GameObject.Find("CalibrationBalloon");
+        calibrationBalloon.GetComponent<Renderer>().material.color = Color.red;
+        calibrationPoint1 = GameObject.Find("CalibrationPoint1");
+        calibrationPoint2 = GameObject.Find("CalibrationPoint2");
+        calibrationPoint1.SetActive(false);
+        calibrationPoint2.SetActive(false);
+
+        smoothedAveragePoint = new Vector3(0, 0, 0);
+        numAverages = 0;
+        calibrationStage = CalibrationStage.BEFORE_FIRST_POINT;
+
         mesh = new Mesh();
 
         GetComponent<MeshFilter>().mesh = mesh;
-        //CreateMesh();
 
         points = new Vector3[maxPoints];
         indices = new int[maxPoints];
         colors = new Color[maxPoints];
-
-        // unused
-        colorBuckets = new Color[6];
-        colorBuckets[0] = new Color(1.0f, 0.0f, 0.0f, 1.0f);
-        colorBuckets[1] = new Color(1.0f, 0.517f, 0.0f, 1.0f);
-        colorBuckets[2] = new Color(1.0f, 1.0f, 0.0f, 1.0f);
-        colorBuckets[3] = new Color(0.0f, 1.0f, 0.0f, 1.0f);
-        colorBuckets[4] = new Color(0.0f, 0.0f, 1.0f, 1.0f);
-        colorBuckets[5] = new Color(1.0f, 0.0f, 1.0f, 1.0f);
-
 
         g = new Gradient();
         gck = new GradientColorKey[5];
@@ -127,7 +143,8 @@ public class RenderPointCloud : MonoBehaviour {
         Quaternion pointCloudRotation = Quaternion.Euler(0, movoRotationOffsetAngle, 0);
         Quaternion calibrationRotation = Quaternion.Euler(-95, 0, 95);
         Vector3 calibrationTranslation = new Vector3(0.4f, 0.49f, 0.35f);
-
+        Vector3 total = new Vector3(0, 0, 0);
+    
         for (int i = 0; i < numPoints; ++i) { // TODO: make this more efficient -- maybe do this via matrix multiplication.
             points[i] = new Vector3(-cloud.Points[i].x, cloud.Points[i].y, cloud.Points[i].z);
 
@@ -135,6 +152,7 @@ public class RenderPointCloud : MonoBehaviour {
             points[i] = calibrationRotation * points[i];
             points[i] = points[i] + calibrationTranslation;
 
+            total += points[i];
             // Translating and rotating according to the Movo's new position
             points[i] = points[i] + movoTranslationOffset;
             points[i] = pointCloudRotation * points[i];
@@ -147,11 +165,34 @@ public class RenderPointCloud : MonoBehaviour {
         mesh.colors = colors;
         mesh.SetIndices(indices, MeshTopology.Points, 0);
 
+        // Sets the location of the calibration balloon (AveragePoint game object).
+        //averagePoint.transform.position.Set(total.x / numPoints, total.y / numPoints, total.z / numPoints);
+        if (false) {
+            averagePoint.transform.position = total / numPoints;
+
+            if (calibrationStage == CalibrationStage.BEFORE_FIRST_POINT) {
+                Vector3 prevSmoothedAverage = smoothedAveragePoint;
+                smoothedAveragePoint = (smoothedAveragePoint * numAverages + (total / numPoints)) / (numAverages + 1);
+                numAverages += 1;
+                calibrationBalloon.transform.position = smoothedAveragePoint;
+
+                if (Vector3.Distance(prevSmoothedAverage, smoothedAveragePoint) < epsilon) {
+                    calibrationPoint1.transform.position = smoothedAveragePoint;
+                    calibrationPoint1.SetActive(true);
+                    calibrationStage = CalibrationStage.BEFORE_SECOND_POINT;
+                }
+            }
+            else {
+
+            }
+        }
+
+
         // Step 3: Un-rotate and un-translate the Movo.
         movo.transform.Rotate(-lastMovoRotation);
         movo.transform.Translate(-lastMovoTranslation);
 
-        // Step 4: Rotate and translate the Movo to its new position.
+        //// Step 4: Rotate and translate the Movo to its new position.
         lastMovoRotation = new Vector3(0, movoRotationOffsetAngle, 0);
         lastMovoTranslation = movoTranslationOffset;
         movo.transform.Translate(movoTranslationOffset);
