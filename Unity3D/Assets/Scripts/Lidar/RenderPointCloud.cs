@@ -5,36 +5,22 @@ using UnityEngine;
 
 public class MovoPosition {
     public int secs, nsecs;
-    public float x, y, angle;
+    public Vector2 position;
+    public Quaternion rotation;
 
-    public MovoPosition(int secs, int nsecs, float x, float y, float angle) {
+    public MovoPosition(int secs, int nsecs, Vector2 position, Quaternion rotation) {
         this.secs = secs;
         this.nsecs = nsecs;
-        this.x = x;
-        this.y = y;
-        this.angle = angle;
+        this.position = position;
+        this.rotation = rotation;
     }
-}
-
-public enum CalibrationStage {
-    BEFORE_FIRST_POINT,
-    BEFORE_SECOND_POINT,
-    CALIBRATED
 }
 
 [RequireComponent(typeof(MeshFilter), typeof(MeshRenderer))]
 public class RenderPointCloud : MonoBehaviour {
 
     public ConcurrentQueue<MovoPosition> movoPositions;
-    private Vector3 lastMovoTranslation, lastMovoRotation;
-
-    private Vector3 smoothedAveragePoint;
-    private int numAverages;
-    private CalibrationStage calibrationStage;
-
     private GameObject movo;
-    private GameObject averagePoint, calibrationBalloon;
-    private GameObject calibrationPoint1, calibrationPoint2;
 
     private Mesh mesh;
     int maxPoints = 60000;
@@ -53,26 +39,9 @@ public class RenderPointCloud : MonoBehaviour {
     // Use this for initialization
     void Start() {
         movoPositions = new ConcurrentQueue<MovoPosition>();
-        lastMovoRotation = new Vector3(0,0,0);
-        lastMovoTranslation = new Vector3(0,0,0);
         movo = GameObject.Find("movo");
 
-        averagePoint = GameObject.Find("AveragePoint");
-        averagePoint.GetComponent<Renderer>().material.color = Color.black;
-        averagePoint.SetActive(false);
-        calibrationBalloon = GameObject.Find("CalibrationBalloon");
-        calibrationBalloon.GetComponent<Renderer>().material.color = Color.red;
-        calibrationPoint1 = GameObject.Find("CalibrationPoint1");
-        calibrationPoint2 = GameObject.Find("CalibrationPoint2");
-        calibrationPoint1.SetActive(false);
-        calibrationPoint2.SetActive(false);
-
-        smoothedAveragePoint = new Vector3(0, 0, 0);
-        numAverages = 0;
-        calibrationStage = CalibrationStage.BEFORE_FIRST_POINT;
-
         mesh = new Mesh();
-
         GetComponent<MeshFilter>().mesh = mesh;
 
         points = new Vector3[maxPoints];
@@ -98,53 +67,43 @@ public class RenderPointCloud : MonoBehaviour {
         gak[1].time = 1.0F;
         g.SetKeys(gck, gak);
     }
-    
+
     public void renderCloudAndMovo(PointCloud cloud, int secs, int nsecs) {
         int numPoints = Mathf.Min(60000, cloud.Points.Length);
-        bool moveTheMovo = false;
 
         // Step 1: Get the latest possible movo position
-        Vector3 movoTranslationOffset = new Vector3(0,0,0);
-        float movoRotationOffsetAngle = 0;
+        MovoPosition currentPosition = null;
 
         // Step 1a: Find the latest movoPosition from the Queue that is before the input secs/nsecs.
         if (!movoPositions.IsEmpty) {
-            MovoPosition curr = null;
             MovoPosition next;
             while (movoPositions.TryPeek(out next)) {
                 if (next.secs < secs || (next.secs == secs && next.nsecs <= nsecs)) { // next is before the input time
-                    movoPositions.TryDequeue(out curr);
-                }
-                else {
+                    movoPositions.TryDequeue(out currentPosition);
+                } else {
                     break;
                 }
             }
-
-            if (curr != null) {
-                // We found a time for the next movo position.
-                moveTheMovo = true;
-
-                // Step 1b: Get the translation offset between the realLifeInitialMovoPosition and the latest movoPosition.
-                movoTranslationOffset = new Vector3(curr.x, 0, curr.y); // Note the 0 in the middle.
-
-                // Step 1c: Get the angle offset between them
-                movoRotationOffsetAngle = curr.angle;
-            }
         }
 
-      
+        if (currentPosition != null) { // We found a time for the next movo position.
+            // Step 1b: Get the translation offset between the realLifeInitialMovoPosition and the latest movoPosition.
+            movoTranslation = new Vector3(curr.x, 0, curr.y); // Note the 0 in the middle.
 
-        if (!moveTheMovo) {
-            // TODO: Figure this case out -- it's not trivial.
-            return;
+            // Step 1c: Get the angle offset between them
+            movoRotation = curr.rotation;
+        } else {
+          // TODO: Figure this case out -- it's not trivial.
+          Debug.Log("No odometry data.");
+          return;
         }
 
         // Step 2: Rotate and translate the point cloud.
-        Quaternion pointCloudRotation = Quaternion.Euler(0, movoRotationOffsetAngle, 0);
+        // TODO: try removing this -- we wouldn't need calibration (in theory)
         Quaternion calibrationRotation = Quaternion.Euler(-95, 0, 95);
         Vector3 calibrationTranslation = new Vector3(0.4f, 0.49f, 0.35f);
-        Vector3 total = new Vector3(0, 0, 0);
-    
+        Vector3 fixedMovoPosition = new Vector3(currentPosition.position.x, 0, currentPosition.position.y);
+
         for (int i = 0; i < numPoints; ++i) { // TODO: make this more efficient -- maybe do this via matrix multiplication.
             points[i] = new Vector3(-cloud.Points[i].x, cloud.Points[i].y, cloud.Points[i].z);
 
@@ -152,10 +111,9 @@ public class RenderPointCloud : MonoBehaviour {
             points[i] = calibrationRotation * points[i];
             points[i] = points[i] + calibrationTranslation;
 
-            total += points[i];
             // Translating and rotating according to the Movo's new position
-            points[i] = points[i] + movoTranslationOffset;
-            points[i] = pointCloudRotation * points[i];
+            points[i] = points[i] + fixedMovoPosition;
+            points[i] = currentPosition.rotation * points[i];
 
             indices[i] = i;
             colors[i] = g.Evaluate(cloud.Points[i].rgb[2] / 255.0f);
@@ -165,39 +123,9 @@ public class RenderPointCloud : MonoBehaviour {
         mesh.colors = colors;
         mesh.SetIndices(indices, MeshTopology.Points, 0);
 
-        // Sets the location of the calibration balloon (AveragePoint game object).
-        //averagePoint.transform.position.Set(total.x / numPoints, total.y / numPoints, total.z / numPoints);
-        if (false) {
-            averagePoint.transform.position = total / numPoints;
-
-            if (calibrationStage == CalibrationStage.BEFORE_FIRST_POINT) {
-                Vector3 prevSmoothedAverage = smoothedAveragePoint;
-                smoothedAveragePoint = (smoothedAveragePoint * numAverages + (total / numPoints)) / (numAverages + 1);
-                numAverages += 1;
-                calibrationBalloon.transform.position = smoothedAveragePoint;
-
-                if (Vector3.Distance(prevSmoothedAverage, smoothedAveragePoint) < epsilon) {
-                    calibrationPoint1.transform.position = smoothedAveragePoint;
-                    calibrationPoint1.SetActive(true);
-                    calibrationStage = CalibrationStage.BEFORE_SECOND_POINT;
-                }
-            }
-            else {
-
-            }
-        }
-
-
-        // Step 3: Un-rotate and un-translate the Movo.
-        movo.transform.Rotate(-lastMovoRotation);
-        movo.transform.Translate(-lastMovoTranslation);
-
-        //// Step 4: Rotate and translate the Movo to its new position.
-        lastMovoRotation = new Vector3(0, movoRotationOffsetAngle, 0);
-        lastMovoTranslation = movoTranslationOffset;
-        movo.transform.Translate(movoTranslationOffset);
-        movo.transform.Rotate(lastMovoRotation);
-
-        Debug.Log("Movo rotation: " + lastMovoRotation);
+        // Step 4: Move the movo to its new position.
+        movo.transform.position = new Vector3(currentPosition.position.x, 0, currentPosition.position.y);
+        movo.transform.rotation = currentPosition.rotation;
+        Debug.Log("Movo rotation: " + movo.transform.rotation);
     }
 }

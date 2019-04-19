@@ -5,13 +5,12 @@ using UnityEngine;
 
 namespace RosSharp.RosBridgeClient {
 
-    //    [RequireComponent(typeof(MeshRenderer))]
     public class OdometryReceiver : MessageReceiver {
 
         public override Type MessageType { get { return (typeof(NavigationOdometry)); } }
 
         private NavigationOdometry odometryData;
-        private MovoPosition init;
+        private MovoPosition initialPosition;
 
         public RenderPointCloud pointCloudRenderer;
 
@@ -19,31 +18,33 @@ namespace RosSharp.RosBridgeClient {
             MessageReception += ReceiveMessage;
         }
         private void Start() {
-            init = null;
+            initialPosition = null;
             Debug.Log("Start OdometryReceiver");
         }
 
+        // Important: This message zeroes out the translation/rotation data such that
+        // the very first position it gets is zero, and every other position is relative
+        // to the initial position.
         private void ReceiveMessage(object sender, MessageEventArgs e) {
-            //Debug.Log("ReceiveMessage LidarPointCloudReceiver");
             odometryData = ((NavigationOdometry)e.Message);
-            //Debug.Log("Odometry timestamp: " + odometryData.header.stamp.secs + ", " + odometryData.header.stamp.nsecs);
-            //Debug.Log("Odometry x: " + odometryData.pose.pose.position.x + ", y: " + odometryData.pose.pose.position.y);
             Debug.Log("Odometry angle: " + odometryData.pose.pose.orientation.z);
 
             // This is where the offset calculations come in. Only offsets get queued.
-            if (init != null) {
+            if (initialPosition != null) {
                 pointCloudRenderer.movoPositions.Enqueue(new MovoPosition(
                     odometryData.header.stamp.secs, odometryData.header.stamp.nsecs,
-                    odometryData.pose.pose.position.y - init.x, odometryData.pose.pose.position.x - init.y,
-                    odometryData.pose.pose.orientation.z * -110 - init.angle));
+                    new Vector2(odometryData.pose.pose.position.y - initialPosition.position.x
+                    odometryData.pose.pose.position.x - initialPosition.position.y),
+                    new Quaternion(odometryData.pose.pose.orientation) / initialPosition.rotation));
             } else {
-                init = new MovoPosition(
+                initialPosition = new MovoPosition(
                     odometryData.header.stamp.secs, odometryData.header.stamp.nsecs,
-                    odometryData.pose.pose.position.y, odometryData.pose.pose.position.x,
-                    odometryData.pose.pose.orientation.z * -110);
-                pointCloudRenderer.movoPositions.Enqueue(new MovoPosition(odometryData.header.stamp.secs, odometryData.header.stamp.nsecs, 0,0,0));
+                    new Vector2(odometryData.pose.pose.position.y, odometryData.pose.pose.position.x),
+                    new Quaternion(odometryData.pose.pose.orientation));
+                pointCloudRenderer.movoPositions.Enqueue(new MovoPosition(odometryData.header.stamp.secs, odometryData.header.stamp.nsecs,
+                                                                          new Vector2(0,0),
+                                                                          new Quaternion(1,0,0,0)));
             }
         }
     }
 }
-
