@@ -27,23 +27,24 @@ namespace RosSharp.RosBridgeClient {
         // to the initial position.
         private void ReceiveMessage(object sender, MessageEventArgs e) {
             odometryData = ((NavigationOdometry)e.Message);
-            Debug.Log("Odometry angle: " + odometryData.pose.pose.orientation.z);
+            GeometryQuaternion q = odometryData.pose.pose.orientation;
+            Debug.Log("Odometry angle: " + q.z);
 
             // This is where the offset calculations come in. Only offsets get queued.
             if (initialPosition != null) {
                 pointCloudRenderer.movoPositions.Enqueue(new MovoPosition(
                     odometryData.header.stamp.secs, odometryData.header.stamp.nsecs,
-                    new Vector2(odometryData.pose.pose.position.y - initialPosition.position.x
+                    new Vector2(odometryData.pose.pose.position.y - initialPosition.position.x,
                     odometryData.pose.pose.position.x - initialPosition.position.y),
-                    new Quaternion(odometryData.pose.pose.orientation) / initialPosition.rotation));
+                    new Quaternion(q.x, q.y, q.z, q.w) * Quaternion.Inverse(initialPosition.rotation)));
             } else {
                 initialPosition = new MovoPosition(
                     odometryData.header.stamp.secs, odometryData.header.stamp.nsecs,
                     new Vector2(odometryData.pose.pose.position.y, odometryData.pose.pose.position.x),
-                    new Quaternion(odometryData.pose.pose.orientation));
+                    new Quaternion(q.x, q.y, q.z, q.w));
                 pointCloudRenderer.movoPositions.Enqueue(new MovoPosition(odometryData.header.stamp.secs, odometryData.header.stamp.nsecs,
                                                                           new Vector2(0,0),
-                                                                          new Quaternion(1,0,0,0)));
+                                                                          new Quaternion(0,0,0,1)));
             }
         }
     }

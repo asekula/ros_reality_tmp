@@ -87,15 +87,11 @@ public class RenderPointCloud : MonoBehaviour {
         }
 
         if (currentPosition != null) { // We found a time for the next movo position.
-            // Step 1b: Get the translation offset between the realLifeInitialMovoPosition and the latest movoPosition.
-            movoTranslation = new Vector3(curr.x, 0, curr.y); // Note the 0 in the middle.
-
-            // Step 1c: Get the angle offset between them
-            movoRotation = curr.rotation;
         } else {
-          // TODO: Figure this case out -- it's not trivial.
-          Debug.Log("No odometry data.");
-          return;
+            // TODO: Figure this case out -- it's not trivial.
+            Debug.Log("No odometry data.");
+            currentPosition = new MovoPosition(0, 0, new Vector2(0, 0), new Quaternion(0, 0, 0, 1));            
+            //return;
         }
 
         // Step 2: Rotate and translate the point cloud.
@@ -124,7 +120,7 @@ public class RenderPointCloud : MonoBehaviour {
         mesh.SetIndices(indices, MeshTopology.Points, 0);
 
         // Step 4: Move the movo to its new position.
-        movo.transform.position = new Vector3(currentPosition.position.x, 0, currentPosition.position.y);
+        movo.transform.position = fixedMovoPosition;
         movo.transform.rotation = currentPosition.rotation;
         Debug.Log("Movo rotation: " + movo.transform.rotation);
     }
