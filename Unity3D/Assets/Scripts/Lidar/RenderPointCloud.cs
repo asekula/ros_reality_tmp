@@ -5,13 +5,13 @@ using UnityEngine;
 
 public class MovoPosition {
     public int secs, nsecs;
-    public Vector2 position;
+    public Vector2 translation;
     public Quaternion rotation;
 
-    public MovoPosition(int secs, int nsecs, Vector2 position, Quaternion rotation) {
+    public MovoPosition(int secs, int nsecs, Vector2 translation, Quaternion rotation) {
         this.secs = secs;
         this.nsecs = nsecs;
-        this.position = position;
+        this.translation = translation;
         this.rotation = rotation;
     }
 }
@@ -20,6 +20,8 @@ public class MovoPosition {
 public class RenderPointCloud : MonoBehaviour {
 
     public ConcurrentQueue<MovoPosition> movoPositions;
+    private MovoPosition lastPosition;
+    private int numMissingPositions;
     private GameObject movo;
 
     private Mesh mesh;
@@ -47,6 +49,8 @@ public class RenderPointCloud : MonoBehaviour {
         points = new Vector3[maxPoints];
         indices = new int[maxPoints];
         colors = new Color[maxPoints];
+        lastPosition = new MovoPosition(0, 0, new Vector2(0, 0), new Quaternion(0, 0, 0, 1));
+        numMissingPositions = 0;
 
         g = new Gradient();
         gck = new GradientColorKey[5];
@@ -78,27 +82,36 @@ public class RenderPointCloud : MonoBehaviour {
         if (!movoPositions.IsEmpty) {
             MovoPosition next;
             while (movoPositions.TryPeek(out next)) {
+                //Debug.Log("current secs: " + secs + ", next secs: " + next.secs);
                 if (next.secs < secs || (next.secs == secs && next.nsecs <= nsecs)) { // next is before the input time
-                    movoPositions.TryDequeue(out currentPosition);
-                } else {
+                    bool success = movoPositions.TryDequeue(out currentPosition);
+                    //Debug.Log("dequeued: " + success);
+                    //Debug.Log("length of queue: " + movoPositions.Count);
+                }
+                else {
                     break;
                 }
             }
+        } else {
+            //Debug.Log("Queue empty.");
         }
 
         if (currentPosition != null) { // We found a time for the next movo position.
-        } else {
-            // TODO: Figure this case out -- it's not trivial.
-            Debug.Log("No odometry data.");
-            currentPosition = new MovoPosition(0, 0, new Vector2(0, 0), new Quaternion(0, 0, 0, 1));            
-            //return;
+            numMissingPositions = 0;
+            lastPosition = currentPosition;
+        }
+        else {
+            //Debug.Log("No SLAM data: " + numMissingPositions);
+            currentPosition = lastPosition;
+            numMissingPositions += 1;
+            System.Threading.Thread.Sleep(10);
         }
 
         // Step 2: Rotate and translate the point cloud.
         // TODO: try removing this -- we wouldn't need calibration (in theory)
         Quaternion calibrationRotation = Quaternion.Euler(-95, 0, 95);
         Vector3 calibrationTranslation = new Vector3(0.4f, 0.49f, 0.35f);
-        Vector3 fixedMovoPosition = new Vector3(currentPosition.position.x, 0, currentPosition.position.y);
+        Vector3 fixedMovoPosition = new Vector3(currentPosition.translation.x, 0, currentPosition.translation.y);
 
         for (int i = 0; i < numPoints; ++i) { // TODO: make this more efficient -- maybe do this via matrix multiplication.
             points[i] = new Vector3(-cloud.Points[i].x, cloud.Points[i].y, cloud.Points[i].z);
@@ -120,8 +133,9 @@ public class RenderPointCloud : MonoBehaviour {
         mesh.SetIndices(indices, MeshTopology.Points, 0);
 
         // Step 4: Move the movo to its new position.
-        movo.transform.position = fixedMovoPosition;
+        //movo.transform.Rotate((Quaternion.Inverse(movo.transform.rotation) * currentPosition.rotation).eulerAngles);
         movo.transform.rotation = currentPosition.rotation;
-        Debug.Log("Movo rotation: " + movo.transform.rotation);
+        movo.transform.position = Quaternion.Inverse(movo.transform.rotation) * fixedMovoPosition;
+        //Debug.Log("Movo rotation: " + movo.transform.rotation);
     }
 }

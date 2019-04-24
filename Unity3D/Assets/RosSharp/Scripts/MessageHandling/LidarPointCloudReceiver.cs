@@ -38,6 +38,8 @@ namespace RosSharp.RosBridgeClient {
             pointCloudRenderer.renderCloudAndMovo(pointCloud, pointCloudData.header.stamp.secs,
                                                   pointCloudData.header.stamp.nsecs);
             isMessageReceived = false;
+
+            Debug.Log("\t\tvelo secs: " + pointCloudData.header.stamp.secs + ", " + pointCloudData.header.stamp.nsecs);
         }
     }
 }
