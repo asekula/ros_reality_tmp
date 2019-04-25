@@ -46,24 +46,18 @@ namespace RosSharp.RosBridgeClient {
 
             int secs = odometryData.header.stamp.secs;
             int nsecs = odometryData.header.stamp.nsecs;
-            Quaternion rotation = Quaternion.Inverse(new Quaternion(0, 0, odometryData.transform.rotation.z, odometryData.transform.rotation.w));
-            rotation = new Quaternion(0.701f, 0, 0, 0.701f) * rotation * Quaternion.Inverse(new Quaternion(0.701f, 0, 0, 0.701f));
-            Vector2 translation = new Vector2(-odometryData.transform.translation.y, -odometryData.transform.translation.x); // translation.z is always zero.
-            //Debug.Log("X: " + translation.x);
-            //Debug.Log("Y: " + translation.y);
-            //Debug.Log("z: " + rotation.z);
-            Debug.Log("slam secs: " + secs + ", " + nsecs);
-
+            Quaternion rotation = new Quaternion(0, 0, odometryData.transform.rotation.z, odometryData.transform.rotation.w);
+            Vector2 translation = new Vector2(odometryData.transform.translation.y, odometryData.transform.translation.x);
 
             // This is where the offset calculations come in. Only offsets get queued.
             if (initialPosition != null) {
                 pointCloudRenderer.movoPositions.Enqueue(new MovoPosition(
                     secs, nsecs, 
-                    translation - initialPosition.translation, 
-                    rotation * Quaternion.Inverse(initialPosition.rotation)));
+                    translation - initialPosition.translation,
+                    (360 + (360-rotation.eulerAngles.z) - initialPosition.angle) % 360));
             } else {
-                initialPosition = new MovoPosition(secs, nsecs, translation, rotation);
-                pointCloudRenderer.movoPositions.Enqueue(new MovoPosition(secs, nsecs, new Vector2(0,0), new Quaternion(0,0,0,1)));
+                initialPosition = new MovoPosition(secs, nsecs, translation, 360-rotation.eulerAngles.z);
+                pointCloudRenderer.movoPositions.Enqueue(new MovoPosition(secs, nsecs, new Vector2(0,0), 0));
             }
             isMessageReceived = false;
         }

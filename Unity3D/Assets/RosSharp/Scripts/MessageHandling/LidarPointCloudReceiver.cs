@@ -39,7 +39,7 @@ namespace RosSharp.RosBridgeClient {
                                                   pointCloudData.header.stamp.nsecs);
             isMessageReceived = false;
 
-            Debug.Log("\t\tvelo secs: " + pointCloudData.header.stamp.secs + ", " + pointCloudData.header.stamp.nsecs);
+            //Debug.Log("\t\tvelo secs: " + pointCloudData.header.stamp.secs + ", " + pointCloudData.header.stamp.nsecs);
         }
     }
 }

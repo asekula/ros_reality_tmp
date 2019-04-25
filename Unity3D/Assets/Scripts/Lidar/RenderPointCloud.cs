@@ -6,13 +6,13 @@ using UnityEngine;
 public class MovoPosition {
     public int secs, nsecs;
     public Vector2 translation;
-    public Quaternion rotation;
+    public float angle;
 
-    public MovoPosition(int secs, int nsecs, Vector2 translation, Quaternion rotation) {
+    public MovoPosition(int secs, int nsecs, Vector2 translation, float angle) {
         this.secs = secs;
         this.nsecs = nsecs;
         this.translation = translation;
-        this.rotation = rotation;
+        this.angle = angle;
     }
 }
 
@@ -49,7 +49,7 @@ public class RenderPointCloud : MonoBehaviour {
         points = new Vector3[maxPoints];
         indices = new int[maxPoints];
         colors = new Color[maxPoints];
-        lastPosition = new MovoPosition(0, 0, new Vector2(0, 0), new Quaternion(0, 0, 0, 1));
+        lastPosition = new MovoPosition(0, 0, new Vector2(0, 0), 0);
         numMissingPositions = 0;
 
         g = new Gradient();
@@ -76,7 +76,7 @@ public class RenderPointCloud : MonoBehaviour {
         int numPoints = Mathf.Min(60000, cloud.Points.Length);
 
         // Step 1: Get the latest possible movo position
-        MovoPosition currentPosition = null;
+        MovoPosition currentPosition = null, savedLastPosition = lastPosition;
 
         // Step 1a: Find the latest movoPosition from the Queue that is before the input secs/nsecs.
         if (!movoPositions.IsEmpty) {
@@ -122,7 +122,7 @@ public class RenderPointCloud : MonoBehaviour {
 
             // Translating and rotating according to the Movo's new position
             points[i] = points[i] + fixedMovoPosition;
-            points[i] = currentPosition.rotation * points[i];
+            points[i] = Quaternion.Euler(new Vector3(0, currentPosition.angle, 0)) * points[i];
 
             indices[i] = i;
             colors[i] = g.Evaluate(cloud.Points[i].rgb[2] / 255.0f);
@@ -133,9 +133,8 @@ public class RenderPointCloud : MonoBehaviour {
         mesh.SetIndices(indices, MeshTopology.Points, 0);
 
         // Step 4: Move the movo to its new position.
-        //movo.transform.Rotate((Quaternion.Inverse(movo.transform.rotation) * currentPosition.rotation).eulerAngles);
-        movo.transform.rotation = currentPosition.rotation;
-        movo.transform.position = Quaternion.Inverse(movo.transform.rotation) * fixedMovoPosition;
-        //Debug.Log("Movo rotation: " + movo.transform.rotation);
+        float angle = (360 + currentPosition.angle - savedLastPosition.angle) % 360;
+        movo.transform.Rotate(Vector3.up, angle);
+        movo.transform.position = fixedMovoPosition;
     }
 }
