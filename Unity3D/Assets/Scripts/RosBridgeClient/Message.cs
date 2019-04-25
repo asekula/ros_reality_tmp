@@ -220,6 +220,17 @@ public class GeometryTransform : Message {
     }
 }
 
+public class GeometryTransformStamped : Message {
+    public StandardHeader header;
+    public string child_frame_id;
+    public GeometryTransform transform;
+    public GeometryTransformStamped() {
+        header = new StandardHeader();
+        child_frame_id = "";
+        transform = new GeometryTransform();
+    }
+}
+
 public class GeometryTwist : Message {
     public GeometryVector3 linear;
     public GeometryVector3 angular;

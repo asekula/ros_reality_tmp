@@ -8,9 +8,9 @@ namespace RosSharp.RosBridgeClient {
     public class OdometryReceiver : MessageReceiver {
 
 
-        public override Type MessageType { get { return (typeof(GeometryTransform)); } }
+        public override Type MessageType { get { return (typeof(GeometryTransformStamped)); } }
 
-        private GeometryTransform odometryData;
+        private GeometryTransformStamped odometryData;
         private MovoPosition initialPosition;
         private bool isMessageReceived;
 
@@ -21,7 +21,7 @@ namespace RosSharp.RosBridgeClient {
         }
         private void Start() {
             initialPosition = null;
-            //Debug.Log("Start tf listener");
+            Debug.Log("Start tf listener");
         }
 
         private void Update() {
@@ -29,7 +29,7 @@ namespace RosSharp.RosBridgeClient {
                 ProcessMessage();
         }
         private void ReceiveMessage(object sender, MessageEventArgs e) {
-            odometryData = ((GeometryTransform)e.Message);
+            odometryData = ((GeometryTransformStamped)e.Message);
             isMessageReceived = true;
         }
 
@@ -39,17 +39,16 @@ namespace RosSharp.RosBridgeClient {
         private void ProcessMessage() {
             //Debug.Log("tf rotation: " + odometryData.rotation);
 
-
             // Important: As an initial hack just to get things working, 
             // the x and y coordinates for the quaternion will be the seconds and 
             // nanoseconds of the transform. This will be replaced later with 
             // a GeometryTransformStamped message type.
 
-            int secs = (int)odometryData.rotation.x;
-            int nsecs = (int)odometryData.rotation.y;
-            Quaternion rotation = Quaternion.Inverse(new Quaternion(0, 0, odometryData.rotation.z, odometryData.rotation.w));
+            int secs = odometryData.header.stamp.secs;
+            int nsecs = odometryData.header.stamp.nsecs;
+            Quaternion rotation = Quaternion.Inverse(new Quaternion(0, 0, odometryData.transform.rotation.z, odometryData.transform.rotation.w));
             rotation = new Quaternion(0.701f, 0, 0, 0.701f) * rotation * Quaternion.Inverse(new Quaternion(0.701f, 0, 0, 0.701f));
-            Vector2 translation = new Vector2(-odometryData.translation.y, -odometryData.translation.x); // translation.z is always zero.
+            Vector2 translation = new Vector2(-odometryData.transform.translation.y, -odometryData.transform.translation.x); // translation.z is always zero.
             //Debug.Log("X: " + translation.x);
             //Debug.Log("Y: " + translation.y);
             //Debug.Log("z: " + rotation.z);

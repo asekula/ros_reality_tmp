@@ -59,7 +59,7 @@ public class DepthRosGeometryView : MonoBehaviour {
 
         }
         catch (Exception e) {
-            Debug.Log(e.ToString());
+            //Debug.Log(e.ToString());
         }
 
         try {
@@ -69,7 +69,7 @@ public class DepthRosGeometryView : MonoBehaviour {
             colorTexture.Apply();
         }
         catch (Exception e) {
-            Debug.Log(e.ToString());
+            //Debug.Log(e.ToString());
             return;
         }
     }

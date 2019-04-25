@@ -50,6 +50,7 @@ public static class MessageTypes {
             { "trajectory_msgs/MultiDOFJointTrajectory", typeof(TrajectoryMultiDOFJointTrajectory)},
             { "trajectory_msgs/MultiDOFJointTrajectoryPoint", typeof(TrajectoryMulitDOFJointTrajectoryPoint)},
             { "geometry_msgs/Transform", typeof(GeometryTransform)},
+            { "geometry_msgs/TransformStamped", typeof(GeometryTransformStamped)},
             { "moveit_msgs/RobotState", typeof(MoveItRobotState)},
             { "sensor_msgs/MultiDOFJointState", typeof(SensorMultiDOFJointState)},
             { "geometry_msgs/Wrench", typeof(GeometryWrench)},
