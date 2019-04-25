@@ -113,6 +113,7 @@ public class RenderPointCloud : MonoBehaviour {
         Vector3 calibrationTranslation = new Vector3(0.4f, 0.49f, 0.35f);
         Vector3 fixedMovoPosition = new Vector3(currentPosition.translation.x, 0, currentPosition.translation.y);
 
+
         for (int i = 0; i < numPoints; ++i) { // TODO: make this more efficient -- maybe do this via matrix multiplication.
             points[i] = new Vector3(-cloud.Points[i].x, cloud.Points[i].y, cloud.Points[i].z);
 
@@ -121,8 +122,8 @@ public class RenderPointCloud : MonoBehaviour {
             points[i] = points[i] + calibrationTranslation;
 
             // Translating and rotating according to the Movo's new position
-            points[i] = points[i] + fixedMovoPosition;
-            points[i] = Quaternion.Euler(new Vector3(0, currentPosition.angle, 0)) * points[i];
+            //points[i] = points[i] + fixedMovoPosition;
+            //points[i] = Quaternion.Euler(new Vector3(0, currentPosition.angle, 0)) * points[i];
 
             indices[i] = i;
             colors[i] = g.Evaluate(cloud.Points[i].rgb[2] / 255.0f);
