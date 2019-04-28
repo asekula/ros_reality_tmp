@@ -49,16 +49,20 @@ namespace RosSharp.RosBridgeClient {
             Quaternion rotation = new Quaternion(0, 0, odometryData.transform.rotation.z, odometryData.transform.rotation.w);
             Vector2 translation = new Vector2(odometryData.transform.translation.y, odometryData.transform.translation.x);
 
-            // This is where the offset calculations come in. Only offsets get queued.
-            if (initialPosition != null) {
-                pointCloudRenderer.movoPositions.Enqueue(new MovoPosition(
-                    secs, nsecs,
-                    Quaternion.Euler(0, 0, (360 - initialPosition.angle)) * (translation - initialPosition.translation),
-                    (360 + (360-rotation.eulerAngles.z) - initialPosition.angle) % 360));
-            } else {
-                initialPosition = new MovoPosition(secs, nsecs, translation, 360-rotation.eulerAngles.z);
-                pointCloudRenderer.movoPositions.Enqueue(new MovoPosition(secs, nsecs, new Vector2(0,0), 0));
-            }
+            //// This is where the offset calculations come in. Only offsets get queued.
+            //if (initialPosition != null) {
+            //} else {
+            //    initialPosition = new MovoPosition(secs, nsecs, translation, 360-rotation.eulerAngles.z);
+            //    pointCloudRenderer.movoPositions.Enqueue(new MovoPosition(secs, nsecs, new Vector2(0,0), 0));
+            //}
+
+            pointCloudRenderer.movoPositions.Enqueue(new MovoPosition(
+            secs, nsecs,
+            translation,
+            rotation.eulerAngles.z));
+            Debug.Log("Transform: " + translation.x + ", " + translation.y + ", angle: " + rotation.eulerAngles.z);
+
+
             isMessageReceived = false;
         }
     }

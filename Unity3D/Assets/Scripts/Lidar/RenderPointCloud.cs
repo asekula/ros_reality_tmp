@@ -111,11 +111,9 @@ public class RenderPointCloud : MonoBehaviour {
         // TODO: try removing this -- we wouldn't need calibration (in theory)
         Quaternion calibrationRotation = Quaternion.Euler(-95, 0, 95);
         Vector3 calibrationTranslation = new Vector3(0.4f, 0.49f, 0.35f);
-        Vector3 fixedMovoPosition = new Vector3(currentPosition.translation.x, 0, currentPosition.translation.y);
-
 
         for (int i = 0; i < numPoints; ++i) { // TODO: make this more efficient -- maybe do this via matrix multiplication.
-            points[i] = new Vector3(-cloud.Points[i].x, cloud.Points[i].y, cloud.Points[i].z);
+            points[i] = new Vector3(-cloud.Points[i].x, -cloud.Points[i].y, cloud.Points[i].z);
 
             // Calibration -- after these two lines the point cloud is correct relative to the Movo
             points[i] = calibrationRotation * points[i];
@@ -134,8 +132,9 @@ public class RenderPointCloud : MonoBehaviour {
         mesh.SetIndices(indices, MeshTopology.Points, 0);
 
         // Step 4: Move the movo to its new position.
-        float angle = (360 + currentPosition.angle - savedLastPosition.angle) % 360;
-        movo.transform.Rotate(Vector3.up, angle);
-        movo.transform.position = fixedMovoPosition;
+        //float angle = (360 + currentPosition.angle - savedLastPosition.angle) % 360;
+        //movo.transform.Rotate(Vector3.up, angle);
+        movo.transform.position = new Vector3(currentPosition.translation.x, 0, currentPosition.translation.y);
+        movo.transform.eulerAngles = new Vector3(0, currentPosition.angle, 0);
     }
 }
