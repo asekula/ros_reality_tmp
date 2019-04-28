@@ -52,8 +52,8 @@ namespace RosSharp.RosBridgeClient {
             // This is where the offset calculations come in. Only offsets get queued.
             if (initialPosition != null) {
                 pointCloudRenderer.movoPositions.Enqueue(new MovoPosition(
-                    secs, nsecs, 
-                    translation - initialPosition.translation,
+                    secs, nsecs,
+                    Quaternion.Euler(0, 0, (360 - initialPosition.angle)) * (translation - initialPosition.translation),
                     (360 + (360-rotation.eulerAngles.z) - initialPosition.angle) % 360));
             } else {
                 initialPosition = new MovoPosition(secs, nsecs, translation, 360-rotation.eulerAngles.z);
